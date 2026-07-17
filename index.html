@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <!-- 🔑 iOS 添加到主屏幕的图标（不与 manifest icons 通用） -->
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+
+  <!-- 🔑 状态栏样式：配合 theme_color 避免白边 -->
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+
+  <!-- 🔑 禁止 Safari 自动识别电话号码/邮箱为链接 -->
+  <meta name="format-detection" content="telephone=no,email=no" />
+
+  <!-- 🔑 启动画面背景色 -->
+  <meta name="apple-mobile-web-app-title" content="Reset" />
+  <title>Reset</title>
+  <script type="module" src="/src/main.ts"></script>
+</head>
+
+<body>
+  <div id="app"></div>
+
+  <script>
+    // 🔑 首屏前同步主题，避免闪烁（与 useTheme 共用 reset-theme 键）
+    (function () {
+      try {
+        var t = localStorage.getItem('reset-theme');
+        var isDark =
+          t === 'dark' ||
+          (t !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        var root = document.documentElement;
+        if (isDark) root.classList.add('dark');
+        else root.classList.remove('dark');
+        if (t === 'light') root.classList.add('light');
+      } catch (e) {
+        /* 忽略：JS 不可用时的降级由 CSS 媒体查询兜底 */
+      }
+    })();
+  </script>
+</body>
+
+</html>

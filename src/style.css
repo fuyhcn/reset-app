@@ -1,0 +1,150 @@
+/**
+ * Reset App - Global Styles
+ * Mobile-first PWA, iOS Design System
+ *
+ * 主题 token：默认浅色写在 :root；深色通过 <html>.dark 类覆盖（由 useTheme 控制）。
+ * 显式 .light 用于覆盖系统的深色偏好；auto 模式在系统为深色时由 JS 添加 .dark。
+ */
+
+/* ===== Design Tokens (Light / 默认) ===== */
+:root {
+  --bg: #F2F2F7;
+  --card: #FFFFFF;
+  --text: #1D1D1F;
+  --text2: #8E8E93;
+  --text3: #AEAEB2;
+  --green: #34C759;
+  --orange: #FF9500;
+  --red: #FF3B30;
+  --pink: #FF2D55;
+  --blue: #007AFF;
+  --indigo: #5856D6;
+  --sep: rgba(0, 0, 0, 0.06);
+  --shadow: 0 0.5px 1px rgba(0, 0, 0, 0.03), 0 1px 3px rgba(0, 0, 0, 0.04);
+  --spring: cubic-bezier(0.32, 0.72, 0, 1);
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --dock-glass: rgba(255, 255, 255, 0.78);
+  --dock-border: rgba(255, 255, 255, 0.5);
+  --dock-shadow: 0 4px 20px rgba(0, 0, 0, 0.08), 0 1px 4px rgba(0, 0, 0, 0.04);
+  --overlay: rgba(0, 0, 0, 0.35);
+  --sheet-bg: rgba(255, 255, 255, 0.82);
+  --sheet-border: rgba(255, 255, 255, 0.55);
+  --sheet-shadow: 0 -4px 24px rgba(0, 0, 0, 0.12);
+}
+
+/* ===== Dark tokens (auto：系统深色且未显式指定 light) ===== */
+@media (prefers-color-scheme: dark) {
+  html:not(.light):not(.dark) {
+    --bg: #000000;
+    --card: #1C1C1E;
+    --text: #F5F5F7;
+    --text2: #8E8E93;
+    --text3: #636366;
+    --sep: rgba(255, 255, 255, 0.08);
+    --shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+    --dock-glass: rgba(44, 44, 46, 0.72);
+    --dock-border: rgba(255, 255, 255, 0.1);
+    --dock-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), 0 2px 8px rgba(0, 0, 0, 0.15);
+    --overlay: rgba(0, 0, 0, 0.6);
+    --sheet-bg: rgba(28, 28, 30, 0.78);
+    --sheet-border: rgba(255, 255, 255, 0.12);
+    --sheet-shadow: 0 -4px 24px rgba(0, 0, 0, 0.35);
+  }
+}
+
+/* ===== Explicit Dark (用户选择深色，优先级最高) ===== */
+html.dark {
+  --bg: #000000;
+  --card: #1C1C1E;
+  --text: #F5F5F7;
+  --text2: #8E8E93;
+  --text3: #636366;
+  --sep: rgba(255, 255, 255, 0.08);
+  --shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  --dock-glass: rgba(44, 44, 46, 0.72);
+  --dock-border: rgba(255, 255, 255, 0.1);
+  --dock-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), 0 2px 8px rgba(0, 0, 0, 0.15);
+  --overlay: rgba(0, 0, 0, 0.6);
+  --sheet-bg: rgba(28, 28, 30, 0.78);
+  --sheet-border: rgba(255, 255, 255, 0.12);
+  --sheet-shadow: 0 -4px 24px rgba(0, 0, 0, 0.35);
+}
+
+/* ===== Explicit Light (用户选择浅色，覆盖系统深色) ===== */
+html.light {
+  --bg: #F2F2F7;
+  --card: #FFFFFF;
+  --text: #1D1D1F;
+  --text2: #8E8E93;
+  --text3: #AEAEB2;
+  --sep: rgba(0, 0, 0, 0.06);
+  --shadow: 0 0.5px 1px rgba(0, 0, 0, 0.03), 0 1px 3px rgba(0, 0, 0, 0.04);
+  --dock-glass: rgba(255, 255, 255, 0.78);
+  --dock-border: rgba(255, 255, 255, 0.5);
+  --dock-shadow: 0 4px 20px rgba(0, 0, 0, 0.08), 0 1px 4px rgba(0, 0, 0, 0.04);
+  --overlay: rgba(0, 0, 0, 0.35);
+  --sheet-bg: rgba(255, 255, 255, 0.82);
+  --sheet-border: rgba(255, 255, 255, 0.55);
+  --sheet-shadow: 0 -4px 24px rgba(0, 0, 0, 0.12);
+}
+
+/* ===== Reset ===== */
+*,
+*::before,
+*::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  font-size: 16px;
+  -webkit-text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+  transition: background 0.3s ease, color 0.3s ease;
+}
+
+/* ===== App Container ===== */
+#app {
+  width: 100%;
+  min-height: 100dvh;
+  position: relative;
+}
+
+/* ===== iOS Safe Area ===== */
+@supports (padding-top: env(safe-area-inset-top)) {
+  body {
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+}
+
+/* ===== Scrollbar Hidden ===== */
+::-webkit-scrollbar {
+  display: none;
+}
+
+/* ===== Selection ===== */
+::selection {
+  background: rgba(52, 199, 89, 0.2);
+}
+
+/* ===== PWA Standalone ===== */
+@media (display-mode: standalone) {
+  body {
+    overscroll-behavior: none;
+  }
+}
