@@ -73,7 +73,7 @@ overflow:hidden;
 
 padding:
 
-14px
+calc(env(safe-area-inset-top) + 14px)
 
 24px
 

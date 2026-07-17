@@ -10,6 +10,7 @@ interface Summary {
   exerciseGoal: number
   sleepHours: number
   sleepMinutes: number
+  sleepHas: boolean
   controlDays: number
 }
 
@@ -30,8 +31,13 @@ const band = computed(() => {
 })
 
 function sleepText() {
-  if (!props.summary.sleepHours) return '未记录'
-  return `${props.summary.sleepHours}小时`
+  if (props.summary.sleepHours > 0) {
+    const h = props.summary.sleepHours
+    const m = props.summary.sleepMinutes
+    return m > 0 ? `${h}小时${m}分` : `${h}小时`
+  }
+  if (props.summary.sleepHas) return '已记录'
+  return '未记录'
 }
 </script>
 

@@ -39,7 +39,7 @@ function back() {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 10px 16px 12px;
+  padding: calc(env(safe-area-inset-top) + 10px) 16px 12px;
   position: sticky;
   top: 0;
   z-index: 30;

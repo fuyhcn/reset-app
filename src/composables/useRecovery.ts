@@ -13,6 +13,7 @@
  * 某项完全无记录时取中性 0.5，避免空数据拉低指数（更宽容，但不掩盖问题）。
  */
 import type { ResetEvent } from '@/types/event'
+import { computeSleepDay } from './useSleepStats'
 
 export interface RecoveryPart {
   key: string
@@ -71,15 +72,18 @@ export function computeRecovery(events: ResetEvent[], windowDays = 7): RecoveryR
   const exerciseTarget = EXERCISE_WEEKLY * (windowDays / 7)
   const exerciseRatio = totalMin === 0 ? 0.5 : Math.min(1, totalMin / exerciseTarget)
 
-  // 3) 睡眠充足
+  // 3) 睡眠充足：按「起床归属日」计算每天睡眠，避免把今早起床和今晚入睡串配
   let sleepSum = 0
   let sleepDays = 0
-  for (const day of buckets) {
-    const sleep = day.find((e) => e.action === 'sleep_start')
-    const wake = day.find((e) => e.action === 'wake_up')
-    if (sleep && wake) {
-      const h = (wake.timestamp - sleep.timestamp) / 3600000
+  for (let i = 0; i < windowDays; i++) {
+    const ds = start + i * 86400000
+    const stat = computeSleepDay(events, ds)
+    if (stat.has && stat.durationMs > 0) {
+      const h = stat.durationMs / 3600000
       sleepSum += Math.min(1, h / SLEEP_GOAL)
+      sleepDays++
+    } else if (stat.has) {
+      // 有记录但尚未起床，按中性 0.5 处理，避免空窗拉低
       sleepDays++
     }
   }

@@ -151,6 +151,8 @@ export interface TodaySummary {
   exerciseGoal: number
   sleepHours: number
   sleepMinutes: number
+  /** 已记录任一睡眠事件（入睡/起床），用于看板区分「未记录」与「已记录但时长未知」 */
+  sleepHas: boolean
   sleepTime?: string
   wakeTime?: string
   controlDays: number

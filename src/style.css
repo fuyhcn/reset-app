@@ -102,6 +102,7 @@ html {
   font-size: 16px;
   -webkit-text-size-adjust: 100%;
   -webkit-tap-highlight-color: transparent;
+  background: var(--bg);
 }
 
 body {
@@ -120,16 +121,7 @@ body {
   width: 100%;
   min-height: 100dvh;
   position: relative;
-}
-
-/* ===== iOS Safe Area ===== */
-@supports (padding-top: env(safe-area-inset-top)) {
-  body {
-    padding-top: env(safe-area-inset-top);
-    padding-bottom: env(safe-area-inset-bottom);
-    padding-left: env(safe-area-inset-left);
-    padding-right: env(safe-area-inset-right);
-  }
+  background: var(--bg);
 }
 
 /* ===== Scrollbar Hidden ===== */

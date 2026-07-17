@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onActivated } from 'vue'
 import { useRouter } from 'vue-router'
 import { useEventStore } from '@/stores/eventStore'
 import type { TimelineDisplay } from '@/types/event'
@@ -23,6 +23,10 @@ const dateStr = `${now.getMonth() + 1}月${now.getDate()}日 ${weekDays[now.getD
 
 const groupedTimeline = computed(() => store.groupedTimeline)
 const summary = computed(() => store.summary)
+
+/* 从其他页面（如睡眠记录）返回时强制刷新看板，保证 keep-alive 缓存下数据同步 */
+const summaryKey = ref(0)
+onActivated(() => { summaryKey.value++ })
 
 /* ===== 事件详情 Sheet（点击时间线触发，仅查看/删除） ===== */
 const detailOpen = ref(false)
@@ -76,7 +80,7 @@ function startRecord() {
 <template>
   <div class="home">
     <ResetHeader :date="dateStr" />
-    <SummaryCards :summary="summary" style="margin-bottom: 28px" />
+    <SummaryCards :summary="summary" :key="summaryKey" style="margin-bottom: 28px" />
     <EventTimeline
       :groups="groupedTimeline"
       @select="showDetail"

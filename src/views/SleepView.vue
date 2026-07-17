@@ -1,15 +1,15 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { ref, computed, onActivated } from 'vue'
 import { useRouter } from 'vue-router'
+import { ROUTES } from '@/router'
 import { useEventStore } from '@/stores/eventStore'
 import { useToast } from '@/composables/useToast'
+import { computeSleepWeek } from '@/composables/useSleepStats'
 import PageNav from '@/components/PageNav.vue'
 
 const router = useRouter()
 const store = useEventStore()
 const toast = useToast()
-
-const weekLabels = ['日', '一', '二', '三', '四', '五', '六']
 
 function dayKey(ts: number): string {
   const d = new Date(ts)
@@ -18,34 +18,37 @@ function dayKey(ts: number): string {
   return `${d.getFullYear()}-${m}-${day}`
 }
 
-/** 最近 7 天睡眠时长（小时） */
-const week = computed(() => {
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-  const arr: { label: string; hours: number; has: boolean }[] = []
-  for (let i = 6; i >= 0; i--) {
-    const d = new Date(today)
-    d.setDate(d.getDate() - i)
-    const key = dayKey(d.getTime())
-    const dayEvents = store.events.filter(e => e.type === 'sleep' && dayKey(e.timestamp) === key)
-    const start = dayEvents.find(e => e.action === 'sleep_start')
-    const wake = dayEvents.find(e => e.action === 'wake_up')
-    let hours = 0
-    if (start && wake && wake.timestamp > start.timestamp) {
-      hours = (wake.timestamp - start.timestamp) / 3600000
-    }
-    arr.push({ label: weekLabels[d.getDay()], hours, has: !!(start || wake) })
-  }
-  return arr
-})
+/** 最近 7 天睡眠时长（小时），按起床日归属，避免早晚串配 */
+const week = computed(() => computeSleepWeek(store.events, 7))
 
 const maxHours = 10
 
+/** 今晚是否已记录（进入页面时与重新激活时同步真实数据） */
+const recorded = ref({ start: false, wake: false })
+function syncRecorded() {
+  const key = dayKey(Date.now())
+  recorded.value = {
+    start: store.events.some(e => e.type === 'sleep' && e.action === 'sleep_start' && dayKey(e.timestamp) === key),
+    wake: store.events.some(e => e.type === 'sleep' && e.action === 'wake_up' && dayKey(e.timestamp) === key),
+  }
+}
+onActivated(syncRecorded)
+
 function record(action: 'sleep_start' | 'wake_up') {
   const ev = store.recordSleep(action)
+  const doneKey = action === 'sleep_start' ? 'start' : 'wake'
+  recorded.value[doneKey] = true
   const text = action === 'sleep_start' ? '已记录 · 准备睡觉' : '已记录 · 起床'
-  toast.show(text, { undoAction: () => store.removeEvent(ev.id) })
-  router.back()
+  toast.show(text, {
+    undoAction: () => {
+      store.removeEvent(ev.id)
+      recorded.value[doneKey] = false
+    },
+  })
+}
+
+function finish() {
+  router.push(ROUTES.TODAY)
 }
 </script>
 
@@ -56,21 +59,35 @@ function record(action: 'sleep_start' | 'wake_up') {
     <div class="body">
       <div class="hint">今天的休息</div>
 
-      <button class="sleep-card sleep-start" type="button" @click="record('sleep_start')">
+      <button
+        class="sleep-card sleep-start"
+        :class="{ done: recorded.start }"
+        type="button"
+        @click="record('sleep_start')"
+      >
         <div class="sleep-left">
           <i class="i-ph-moon" />
-          <span>记录入睡</span>
+          <span>{{ recorded.start ? '已记录 · 准备睡觉' : '记录入睡' }}</span>
         </div>
         <i class="i-ph-caret-right sleep-arrow" />
       </button>
 
-      <button class="sleep-card sleep-wake" type="button" @click="record('wake_up')">
+      <button
+        class="sleep-card sleep-wake"
+        :class="{ done: recorded.wake }"
+        type="button"
+        @click="record('wake_up')"
+      >
         <div class="sleep-left">
           <i class="i-ph-sun" />
-          <span>记录起床</span>
+          <span>{{ recorded.wake ? '已记录 · 起床' : '记录起床' }}</span>
         </div>
         <i class="i-ph-caret-right sleep-arrow" />
       </button>
+
+      <div v-if="recorded.start || recorded.wake" class="finish-bar">
+        <button class="finish-btn" type="button" @click="finish">完成 · 返回首页</button>
+      </div>
 
       <div class="section">
         <div class="section-label">本周睡眠</div>
@@ -106,9 +123,19 @@ function record(action: 'sleep_start' | 'wake_up') {
 .sleep-card:active { transform: scale(0.98); }
 .sleep-start { background: linear-gradient(135deg, #5856D6, #7B5BE0); }
 .sleep-wake { background: linear-gradient(135deg, #FF9500, #FFB340); }
+.sleep-card.done { opacity: 0.62; }
 .sleep-left { display: flex; align-items: center; gap: 14px; font-size: 19px; font-weight: 700; }
 .sleep-left i { font-size: 26px; }
 .sleep-arrow { font-size: 20px; opacity: 0.8; }
+
+.finish-bar { margin-top: 8px; }
+.finish-btn {
+  width: 100%; padding: 16px; border-radius: 18px; border: none; cursor: pointer;
+  background: rgba(52, 199, 89, 0.12); color: var(--green);
+  font-size: 16px; font-weight: 700; font-family: inherit;
+  transition: transform 0.2s var(--spring);
+}
+.finish-btn:active { transform: scale(0.98); }
 
 .section { margin-top: 28px; }
 .section-label { font-size: 15px; font-weight: 600; color: var(--text); margin-bottom: 16px; padding-left: 4px; }

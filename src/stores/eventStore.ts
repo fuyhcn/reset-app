@@ -5,6 +5,7 @@
 import { defineStore } from 'pinia'
 import type { ResetEvent, TimelineDisplay, TimelineGroup, TodaySummary, EventType, EventAction, UrgeCategory } from '@/types/event'
 import { EVENT_COLORS, EVENT_ICONS, URGE_CATEGORIES, urgeCategoryLabel, urgeTriggerLabel } from '@/types/event'
+import { computeSleepDay } from '@/composables/useSleepStats'
 
 /** 生成唯一 ID */
 function genId(): string {
@@ -248,15 +249,10 @@ export const useEventStore = defineStore('events', {
         .filter(e => e.type === 'exercise' && e.context?.duration)
         .reduce((sum, e) => sum + (e.context?.duration || 0), 0)
 
-      const sleepEvent = today.find(e => e.action === 'sleep_start')
-      const wakeEvent = today.find(e => e.action === 'wake_up')
-      let sleepHours = 0
-      let sleepMinutes = 0
-      if (sleepEvent && wakeEvent) {
-        const diff = wakeEvent.timestamp - sleepEvent.timestamp
-        sleepHours = Math.floor(diff / 3600000)
-        sleepMinutes = Math.floor((diff % 3600000) / 60000)
-      }
+      const sleepStat = computeSleepDay(this.events, Date.now())
+      const sleepHas = sleepStat.has
+      const sleepHours = Math.floor(sleepStat.durationMs / 3600000)
+      const sleepMinutes = Math.floor((sleepStat.durationMs % 3600000) / 60000)
 
       return {
         smokeCount,
@@ -265,8 +261,9 @@ export const useEventStore = defineStore('events', {
         exerciseGoal: this.exerciseGoal,
         sleepHours,
         sleepMinutes,
-        sleepTime: sleepEvent ? fmtTime(sleepEvent.timestamp) : undefined,
-        wakeTime: wakeEvent ? fmtTime(wakeEvent.timestamp) : undefined,
+        sleepHas,
+        sleepTime: sleepStat.sleepStart ? fmtTime(sleepStat.sleepStart) : undefined,
+        wakeTime: sleepStat.wakeUp ? fmtTime(sleepStat.wakeUp) : undefined,
         controlDays: calcControlDays(this.events),
       }
     },
