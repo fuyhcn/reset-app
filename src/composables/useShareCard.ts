@@ -245,42 +245,42 @@ function drawLogo(ctx: CanvasRenderingContext2D, x: number, y: number, p: Palett
   ctx.restore()
 }
 
-function drawPetal(
-  ctx: CanvasRenderingContext2D,
-  baseX: number,
-  baseY: number,
-  angle: number,
-  length: number,
-  width: number,
-  lightColor: string,
-  darkColor: string,
-) {
-  ctx.save()
-  ctx.translate(baseX, baseY)
-  ctx.rotate(angle)
+// function drawPetal(
+//   ctx: CanvasRenderingContext2D,
+//   baseX: number,
+//   baseY: number,
+//   angle: number,
+//   length: number,
+//   width: number,
+//   lightColor: string,
+//   darkColor: string,
+// ) {
+//   ctx.save()
+//   ctx.translate(baseX, baseY)
+//   ctx.rotate(angle)
 
-  // 花瓣渐变：顶部亮、底部暗，形成立体绽放感
-  const grad = ctx.createLinearGradient(0, -length, 0, 0)
-  grad.addColorStop(0, lightColor)
-  grad.addColorStop(0.55, lightColor)
-  grad.addColorStop(1, darkColor)
+//   // 花瓣渐变：顶部亮、底部暗，形成立体绽放感
+//   const grad = ctx.createLinearGradient(0, -length, 0, 0)
+//   grad.addColorStop(0, lightColor)
+//   grad.addColorStop(0.55, lightColor)
+//   grad.addColorStop(1, darkColor)
 
-  ctx.beginPath()
-  ctx.moveTo(0, 0)
-  ctx.bezierCurveTo(-width * 1.2, -length * 0.28, -width * 0.8, -length * 0.85, 0, -length)
-  ctx.bezierCurveTo(width * 0.8, -length * 0.85, width * 1.2, -length * 0.28, 0, 0)
-  ctx.closePath()
+//   ctx.beginPath()
+//   ctx.moveTo(0, 0)
+//   ctx.bezierCurveTo(-width * 1.2, -length * 0.28, -width * 0.8, -length * 0.85, 0, -length)
+//   ctx.bezierCurveTo(width * 0.8, -length * 0.85, width * 1.2, -length * 0.28, 0, 0)
+//   ctx.closePath()
 
-  ctx.fillStyle = grad
-  ctx.fill()
+//   ctx.fillStyle = grad
+//   ctx.fill()
 
-  // 深色描边，保证朦胧下仍有清晰轮廓
-  ctx.strokeStyle = darkColor
-  ctx.lineWidth = 3
-  ctx.stroke()
+//   // 深色描边，保证朦胧下仍有清晰轮廓
+//   ctx.strokeStyle = darkColor
+//   ctx.lineWidth = 3
+//   ctx.stroke()
 
-  ctx.restore()
-}
+//   ctx.restore()
+// }
 
 /**
  * 底部绽放莲花：整张卡片的「最底层」视觉，朦胧柔化、横向充分展开（占宽约 75%）、比例协调。
