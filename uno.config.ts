@@ -75,5 +75,7 @@ export default defineConfig({
     'i-ph-plus',
     // 导出/备份模块动态图标
     'i-ph-download-simple',
+    // 分享卡片模块动态图标
+    'i-ph-share-network',
   ],
 })

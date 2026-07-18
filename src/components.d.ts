@@ -25,6 +25,7 @@ declare module 'vue' {
     ResetHeader: typeof import('./components/ResetHeader.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
+    ShareCardSheet: typeof import('./components/ShareCardSheet.vue')['default']
     SummaryCards: typeof import('./components/SummaryCards.vue')['default']
     WeightSheet: typeof import('./components/WeightSheet.vue')['default']
     WheelPicker: typeof import('./components/WheelPicker.vue')['default']

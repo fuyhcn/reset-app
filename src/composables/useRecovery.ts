@@ -10,7 +10,7 @@
  *   运动达标 25%  — 窗口内运动总分钟 / 周目标(默认150分) 折算
  *   睡眠充足 25%  — 有睡眠记录的日子，平均时长 / 目标(7h)
  *   连续自控 20%  — 从今天往前连续未失控的天数 / 窗口天数
- * 某项完全无记录时取中性 0.5，避免空数据拉低指数（更宽容，但不掩盖问题）。
+ * 某项完全无记录时取 0，避免「无数据却显示 50%」带来的误解。
  */
 import type { ResetEvent } from '@/types/event'
 import { computeSleepDay } from './useSleepStats'
@@ -65,14 +65,14 @@ export function computeRecovery(events: ResetEvent[], windowDays = 7): RecoveryR
     const comp = cnt <= smokeGoal ? 1 : Math.max(0, 1 - (cnt - smokeGoal) / smokeGoal)
     smokeSum += comp
   }
-  const smokeRatio = smokeDays === 0 ? 0.5 : smokeSum / windowDays
+  const smokeRatio = smokeDays === 0 ? 0 : smokeSum / windowDays
 
   // 2) 运动达标：窗口内运动总分钟 / 周目标（窗口不足 7 天按比例折算）
   const totalMin = win
     .filter((e) => e.type === 'exercise' && e.context?.duration)
     .reduce((s, e) => s + (e.context?.duration || 0), 0)
   const exerciseTarget = weeklyExerciseGoal * (windowDays / 7)
-  const exerciseRatio = totalMin === 0 ? 0.5 : Math.min(1, totalMin / exerciseTarget)
+  const exerciseRatio = totalMin === 0 ? 0 : Math.min(1, totalMin / exerciseTarget)
 
   // 3) 睡眠充足：按「起床归属日」计算每天睡眠，避免把今早起床和今晚入睡串配
   let sleepSum = 0
@@ -85,11 +85,11 @@ export function computeRecovery(events: ResetEvent[], windowDays = 7): RecoveryR
       sleepSum += Math.min(1, h / SLEEP_GOAL)
       sleepDays++
     } else if (stat.has) {
-      // 有记录但尚未起床，按中性 0.5 处理，避免空窗拉低
+      // 有记录但尚未起床，按 0 处理（不构成睡眠充足）
       sleepDays++
     }
   }
-  const sleepRatio = sleepDays === 0 ? 0.5 : sleepSum / sleepDays
+  const sleepRatio = sleepDays === 0 ? 0 : sleepSum / sleepDays
 
   // 4) 连续自控（从今天往前，断签即止）
   let control = 0

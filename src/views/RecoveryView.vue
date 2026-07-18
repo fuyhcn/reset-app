@@ -1,13 +1,15 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { ref, computed } from 'vue'
 import { useEventStore } from '@/stores/eventStore'
 import { computeRecovery } from '@/composables/useRecovery'
 import PageNav from '@/components/PageNav.vue'
+import ShareCardSheet from '@/components/ShareCardSheet.vue'
 
 const store = useEventStore()
 const result = computed(() => computeRecovery(store.events, 7))
 const score = computed(() => result.value.score)
 const parts = computed(() => result.value.parts)
+const shareOpen = ref(false)
 
 const R = 52
 const C = 2 * Math.PI * R
@@ -77,7 +79,14 @@ const band = computed(() => {
         <i class="i-ph-lightbulb" />
         <p>{{ insight }}</p>
       </div>
+
+      <button class="share-btn" type="button" @click="shareOpen = true">
+        <i class="i-ph-share-network" />
+        <span>生成分享卡片</span>
+      </button>
     </div>
+
+    <ShareCardSheet v-model="shareOpen" :score="score" :parts="parts" :band="band" />
   </div>
 </template>
 
@@ -123,4 +132,13 @@ const band = computed(() => {
 }
 .insight i { font-size: 18px; color: var(--green); margin-top: 2px; flex-shrink: 0; }
 .insight p { margin: 0; font-size: 15px; color: var(--text); line-height: 1.5; }
+
+.share-btn {
+  margin-top: 24px; width: 100%; height: 54px; border-radius: 16px; border: none;
+  background: var(--green); color: #fff; font-size: 16px; font-weight: 600; font-family: inherit;
+  display: flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer;
+  transition: transform 0.2s var(--spring);
+}
+.share-btn:active { transform: scale(0.97); }
+.share-btn i { font-size: 20px; }
 </style>
