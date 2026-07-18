@@ -73,5 +73,7 @@ export default defineConfig({
     'i-ph-bell',
     'i-ph-bell-ringing',
     'i-ph-plus',
+    // 导出/备份模块动态图标
+    'i-ph-download-simple',
   ],
 })

@@ -71,6 +71,28 @@ export function useSessions() {
     }
   }
 
+  /** 下载备份文件到本机（iOS 会弹出"存储到文件/分享"）。返回导出条数。 */
+  function downloadBackup(range: 'week' | 'all' = 'week'): number {
+    const start = range === 'week' ? weekStartTs() : 0
+    const events = range === 'all'
+      ? eventStore.events
+      : eventStore.events.filter((e) => e.timestamp >= start)
+
+    const json = buildBackup([...events], range)
+    const blob = new Blob([json], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    const date = new Date().toISOString().slice(0, 10)
+    a.href = url
+    a.download = `Reset备份_${date}.json`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+    localStorage.setItem('reset-last-export', new Date().toISOString())
+    return events.length
+  }
+
   /** 从备份文件导入：替换事件流并合并设置（兼容旧备份中的 settings 字段） */
   async function handleImport(file: File): Promise<boolean> {
     const data = await importData(file)
@@ -94,6 +116,7 @@ export function useSessions() {
     error,
     handleExport,
     handleImport,
+    downloadBackup,
     isExporting,
     isImporting,
   }

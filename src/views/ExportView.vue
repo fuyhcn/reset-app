@@ -9,7 +9,7 @@ import PageNav from '@/components/PageNav.vue'
 
 const store = useEventStore()
 const settings = useSettingsStore()
-const { handleExport, isExporting } = useSessions()
+const { handleExport, handleImport, downloadBackup, error, isExporting } = useSessions()
 const toast = useToast()
 
 const range = ref<'week' | 'all'>('week')
@@ -49,6 +49,64 @@ const lastExport = computed(() => localStorage.getItem('reset-last-export'))
 async function doExport() {
   const n = await handleExport(range.value, settings.activePrompt?.content)
   toast.show(`已复制 ${n} 条记录${settings.activePrompt ? '（含提示词）' : ''}`)
+}
+
+/* ===== 备份到手机（下载 .json） ===== */
+function doDownload() {
+  const n = downloadBackup(range.value)
+  toast.show(`已下载 ${n} 条记录的备份文件`)
+}
+
+/* ===== 从备份恢复（导入） ===== */
+const fileInput = ref<HTMLInputElement | null>(null)
+const confirmOpen = ref(false)
+const pasteOpen = ref(false)
+const pasteText = ref('')
+let pendingFile: File | null = null
+let pendingText: string | null = null
+
+function triggerFile() {
+  fileInput.value?.click()
+}
+
+function onFile(e: Event) {
+  const input = e.target as HTMLInputElement
+  const f = input.files?.[0]
+  input.value = '' // 重置，便于重复选同一文件
+  if (!f) return
+  pendingFile = f
+  pendingText = null
+  confirmOpen.value = true
+}
+
+function onPasteImport() {
+  if (!pasteText.value.trim()) return
+  pendingText = pasteText.value
+  pendingFile = null
+  pasteOpen.value = false
+  confirmOpen.value = true
+}
+
+async function doImportConfirmed() {
+  try {
+    let ok = false
+    if (pendingFile) {
+      ok = await handleImport(pendingFile)
+    } else if (pendingText) {
+      ok = await handleImport(new File([pendingText], 'pasted.json', { type: 'application/json' }))
+    }
+    if (ok) {
+      toast.show('导入成功，已恢复数据')
+    } else {
+      toast.show(error.value || '导入失败，请检查备份内容')
+    }
+  } catch {
+    toast.show('导入失败，请检查备份内容')
+  } finally {
+    pendingFile = null
+    pendingText = null
+    pasteText.value = ''
+  }
 }
 
 /* ===== 提示词模板管理 ===== */
@@ -160,6 +218,27 @@ const activePromptName = computed(() => settings.activePrompt?.name ?? '无')
       </button>
       <div class="export-hint">手机上复制后，直接粘贴到聊天 / 备忘录即可。</div>
 
+      <!-- 备份到手机 -->
+      <div class="section">
+        <div class="section-label">备份到手机</div>
+        <button class="download-btn" type="button" :disabled="eventsInRange.length === 0" @click="doDownload">
+          <i class="i-ph-download-simple" />
+          下载备份文件（.json）
+        </button>
+        <div class="export-hint">iOS 会弹出"存储到文件 / 分享"，存到 iCloud 或备忘录最稳妥。</div>
+      </div>
+
+      <!-- 从备份恢复 -->
+      <div class="section">
+        <div class="section-label">从备份恢复（导入）</div>
+        <div class="import-card">
+          <button class="secondary-btn" type="button" @click="triggerFile">选择文件导入</button>
+          <button class="secondary-btn" type="button" @click="pasteOpen = true">粘贴文本导入</button>
+        </div>
+        <input ref="fileInput" type="file" accept=".json,application/json" hidden @change="onFile" />
+        <div class="export-hint">导入会用备份覆盖当前全部数据，请谨慎操作。</div>
+      </div>
+
       <div v-if="lastExport" class="last-export">
         上次导出：{{ new Date(lastExport).toLocaleString('zh-CN') }}
       </div>
@@ -210,6 +289,34 @@ const activePromptName = computed(() => settings.activePrompt?.name ?? '无')
           </div>
 
           <button class="cancel" type="button" @click="promptOpen = false">完成</button>
+        </div>
+      </Transition>
+    </Teleport>
+
+    <!-- 覆盖导入确认（破坏性） -->
+    <ConfirmDialog
+      v-model="confirmOpen"
+      danger
+      title="覆盖导入数据？"
+      message="导入会用备份替换当前全部记录，此操作不可撤销。确定继续吗？"
+      confirm-text="覆盖导入"
+      @confirm="doImportConfirmed"
+    />
+
+    <!-- 粘贴文本导入 Sheet -->
+    <Teleport to="body">
+      <Transition name="fade">
+        <div v-if="pasteOpen" class="overlay" @click="pasteOpen = false" />
+      </Transition>
+      <Transition name="sheet">
+        <div v-if="pasteOpen" class="sheet">
+          <div class="handle" />
+          <div class="sheet-title">粘贴备份文本</div>
+          <textarea v-model="pasteText" class="paste-textarea" placeholder="把导出的 JSON 文本粘贴到这里…" rows="10" />
+          <button class="export-btn" type="button" :disabled="!pasteText.trim()" @click="onPasteImport">
+            导入
+          </button>
+          <button class="cancel" type="button" @click="pasteOpen = false">取消</button>
         </div>
       </Transition>
     </Teleport>
@@ -271,6 +378,31 @@ const activePromptName = computed(() => settings.activePrompt?.name ?? '无')
 .export-btn:active { transform: scale(0.97); opacity: 0.9; }
 .export-btn:disabled { background: rgba(142, 142, 147, 0.12); color: var(--text3); cursor: default; }
 .export-hint { font-size: 12px; color: var(--text2); text-align: center; margin-top: 10px; line-height: 1.4; }
+
+.download-btn {
+  width: 100%; height: 54px; border-radius: 16px; border: none;
+  background: var(--blue, #007AFF); color: #fff; font-size: 17px; font-weight: 600;
+  font-family: inherit; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;
+  transition: all 0.2s var(--spring);
+}
+.download-btn:active { transform: scale(0.97); opacity: 0.9; }
+.download-btn:disabled { background: rgba(142, 142, 147, 0.12); color: var(--text3); cursor: default; }
+
+.import-card { display: flex; flex-direction: column; gap: 10px; }
+.secondary-btn {
+  width: 100%; height: 50px; border-radius: 14px; border: 1px solid var(--sep);
+  background: var(--card); color: var(--text); font-size: 16px; font-weight: 600;
+  font-family: inherit; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;
+  transition: all 0.2s var(--spring);
+}
+.secondary-btn:active { transform: scale(0.99); background: var(--bg); }
+
+.paste-textarea {
+  width: 100%; padding: 12px 14px; border-radius: 12px; border: 1.5px solid var(--sep);
+  background: var(--bg); color: var(--text); font-size: 13px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  line-height: 1.5; resize: vertical;
+}
+.paste-textarea:focus { outline: none; border-color: var(--green); }
 
 .last-export { text-align: center; font-size: 12px; color: var(--text2); margin-top: 14px; }
 
