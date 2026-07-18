@@ -26,7 +26,7 @@ export function useReminderScheduler() {
   function fire(r: Reminder) {
     const ctor = getNotificationCtor()
     let usedSystem = false
-    if (ctor && ctor.permission === 'granted') {
+    if (store.systemNotify && ctor && ctor.permission === 'granted') {
       try {
         new ctor(r.title, { body: r.body, tag: r.id })
         usedSystem = true
@@ -34,7 +34,7 @@ export function useReminderScheduler() {
         usedSystem = false
       }
     }
-    // 系统通知不可用 / 未授权 → 应用内弹层兜底
+    // 系统通知关闭 / 不可用 / 未授权 → 应用内弹层兜底
     if (!usedSystem) store.enqueue(r)
   }
 

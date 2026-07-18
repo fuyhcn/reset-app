@@ -27,7 +27,7 @@ const points = [
         </div>
       </div>
 
-      <div class="version">Version 0.1.0 · PWA</div>
+      <div class="version">Version 1.0.0 · PWA</div>
     </div>
   </div>
 </template>

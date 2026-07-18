@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onActivated } from 'vue'
+import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { ROUTES } from '@/router'
 import { useEventStore } from '@/stores/eventStore'
@@ -11,39 +11,47 @@ const router = useRouter()
 const store = useEventStore()
 const toast = useToast()
 
-function dayKey(ts: number): string {
-  const d = new Date(ts)
-  const m = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  return `${d.getFullYear()}-${m}-${day}`
-}
-
 /** 最近 7 天睡眠时长（小时），按起床日归属，避免早晚串配 */
 const week = computed(() => computeSleepWeek(store.events, 7))
-
 const maxHours = 10
 
-/** 今晚是否已记录（进入页面时与重新激活时同步真实数据） */
-const recorded = ref({ start: false, wake: false })
-function syncRecorded() {
-  const key = dayKey(Date.now())
-  recorded.value = {
-    start: store.events.some(e => e.type === 'sleep' && e.action === 'sleep_start' && dayKey(e.timestamp) === key),
-    wake: store.events.some(e => e.type === 'sleep' && e.action === 'wake_up' && dayKey(e.timestamp) === key),
+/** 当前睡眠状态：更自然地把“入睡→起床”视为一个连续会话 */
+const sleepState = computed(() => {
+  const list = store.events
+    .filter(e => e.type === 'sleep' && (e.action === 'sleep_start' || e.action === 'wake_up'))
+    .sort((a, b) => a.timestamp - b.timestamp)
+
+  if (!list.length) return { phase: 'idle' as const }
+
+  const last = list[list.length - 1]
+  if (last.action === 'sleep_start') {
+    return { phase: 'sleeping' as const, startTs: last.timestamp }
   }
+  return { phase: 'awake' as const, wakeTs: last.timestamp }
+})
+
+function formatTime(ts: number): string {
+  const d = new Date(ts)
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
 }
-onActivated(syncRecorded)
+
+function formatDateTime(ts: number): string {
+  const d = new Date(ts)
+  const now = new Date()
+  const yesterday = new Date(now)
+  yesterday.setDate(yesterday.getDate() - 1)
+  const isYesterday = d.getFullYear() === yesterday.getFullYear() &&
+    d.getMonth() === yesterday.getMonth() &&
+    d.getDate() === yesterday.getDate()
+  const prefix = isYesterday ? '昨晚 ' : ''
+  return `${prefix}${formatTime(ts)}`
+}
 
 function record(action: 'sleep_start' | 'wake_up') {
   const ev = store.recordSleep(action)
-  const doneKey = action === 'sleep_start' ? 'start' : 'wake'
-  recorded.value[doneKey] = true
-  const text = action === 'sleep_start' ? '已记录 · 准备睡觉' : '已记录 · 起床'
+  const text = action === 'sleep_start' ? '已记录入睡' : '已记录起床'
   toast.show(text, {
-    undoAction: () => {
-      store.removeEvent(ev.id)
-      recorded.value[doneKey] = false
-    },
+    undoAction: () => store.removeEvent(ev.id),
   })
 }
 
@@ -59,35 +67,57 @@ function finish() {
     <div class="body">
       <div class="hint">今天的休息</div>
 
-      <button
-        class="sleep-card sleep-start"
-        :class="{ done: recorded.start }"
-        type="button"
-        @click="record('sleep_start')"
-      >
-        <div class="sleep-left">
-          <i class="i-ph-moon" />
-          <span>{{ recorded.start ? '已记录 · 准备睡觉' : '记录入睡' }}</span>
+      <!-- 状态 1：正在睡觉 —— 只能起床 -->
+      <template v-if="sleepState.phase === 'sleeping'">
+        <div class="status-card sleeping">
+          <i class="i-ph-moon status-icon" />
+          <div class="status-title">正在休息</div>
+          <div class="status-sub">{{ formatDateTime(sleepState.startTs) }} 入睡</div>
         </div>
-        <i class="i-ph-caret-right sleep-arrow" />
-      </button>
 
-      <button
-        class="sleep-card sleep-wake"
-        :class="{ done: recorded.wake }"
-        type="button"
-        @click="record('wake_up')"
-      >
-        <div class="sleep-left">
-          <i class="i-ph-sun" />
-          <span>{{ recorded.wake ? '已记录 · 起床' : '记录起床' }}</span>
+        <button
+          class="main-btn wake"
+          type="button"
+          @click="record('wake_up')"
+        >
+          <div class="btn-left">
+            <i class="i-ph-sun" />
+            <span>记录起床</span>
+          </div>
+          <i class="i-ph-caret-right btn-arrow" />
+        </button>
+
+        <button class="ghost-btn" type="button" @click="record('sleep_start')">
+          重新记录入睡（覆盖当前入睡时间）
+        </button>
+      </template>
+
+      <!-- 状态 2：已起床/未睡觉 —— 只能入睡 -->
+      <template v-else>
+        <div v-if="sleepState.phase === 'awake'" class="status-card awake">
+          <i class="i-ph-sun status-icon" />
+          <div class="status-title">今日已起床</div>
+          <div class="status-sub">{{ formatTime(sleepState.wakeTs) }} 醒来</div>
         </div>
-        <i class="i-ph-caret-right sleep-arrow" />
-      </button>
 
-      <div v-if="recorded.start || recorded.wake" class="finish-bar">
-        <button class="finish-btn" type="button" @click="finish">完成 · 返回首页</button>
-      </div>
+        <button
+          class="main-btn sleep"
+          type="button"
+          @click="record('sleep_start')"
+        >
+          <div class="btn-left">
+            <i class="i-ph-moon" />
+            <span>{{ sleepState.phase === 'awake' ? '再记一段入睡' : '记录入睡' }}</span>
+          </div>
+          <i class="i-ph-caret-right btn-arrow" />
+        </button>
+
+        <button class="ghost-btn" type="button" @click="record('wake_up')">
+          先记录起床（忘记昨晚入睡）
+        </button>
+      </template>
+
+      <button class="finish-btn" type="button" @click="finish">完成 · 返回首页</button>
 
       <div class="section">
         <div class="section-label">本周睡眠</div>
@@ -114,26 +144,57 @@ function finish() {
 
 .hint { font-size: 26px; font-weight: 700; color: var(--text); letter-spacing: -0.3px; margin: 8px 0 20px; padding-left: 4px; }
 
-.sleep-card {
+.status-card {
+  width: 100%;
+  padding: 24px 20px;
+  border-radius: 24px;
+  text-align: center;
+  margin-bottom: 16px;
+  color: #fff;
+}
+.status-card.sleeping {
+  background: linear-gradient(135deg, #5856D6, #7B5BE0);
+}
+.status-card.awake {
+  background: linear-gradient(135deg, #FF9500, #FFB340);
+}
+.status-icon { font-size: 36px; margin-bottom: 10px; }
+.status-title { font-size: 20px; font-weight: 700; }
+.status-sub { font-size: 14px; opacity: 0.85; margin-top: 4px; }
+
+.main-btn {
   width: 100%; display: flex; align-items: center; justify-content: space-between;
   padding: 22px 20px; border-radius: 20px; border: none; cursor: pointer;
   margin-bottom: 12px; color: #fff; font-family: inherit;
   transition: transform 0.2s var(--spring); text-align: left;
 }
-.sleep-card:active { transform: scale(0.98); }
-.sleep-start { background: linear-gradient(135deg, #5856D6, #7B5BE0); }
-.sleep-wake { background: linear-gradient(135deg, #FF9500, #FFB340); }
-.sleep-card.done { opacity: 0.62; }
-.sleep-left { display: flex; align-items: center; gap: 14px; font-size: 19px; font-weight: 700; }
-.sleep-left i { font-size: 26px; }
-.sleep-arrow { font-size: 20px; opacity: 0.8; }
+.main-btn:active { transform: scale(0.98); }
+.main-btn.sleep { background: linear-gradient(135deg, #5856D6, #7B5BE0); }
+.main-btn.wake { background: linear-gradient(135deg, #FF9500, #FFB340); }
+.btn-left { display: flex; align-items: center; gap: 14px; font-size: 19px; font-weight: 700; }
+.btn-left i { font-size: 26px; }
+.btn-arrow { font-size: 20px; opacity: 0.8; }
 
-.finish-bar { margin-top: 8px; }
+.ghost-btn {
+  display: block;
+  width: 100%;
+  padding: 12px 4px;
+  border: none;
+  background: transparent;
+  color: var(--text2);
+  font-size: 14px;
+  font-family: inherit;
+  cursor: pointer;
+  text-align: left;
+  margin-bottom: 16px;
+}
+
 .finish-btn {
   width: 100%; padding: 16px; border-radius: 18px; border: none; cursor: pointer;
   background: rgba(52, 199, 89, 0.12); color: var(--green);
   font-size: 16px; font-weight: 700; font-family: inherit;
   transition: transform 0.2s var(--spring);
+  margin-bottom: 28px;
 }
 .finish-btn:active { transform: scale(0.98); }
 

@@ -78,6 +78,11 @@ function adjustDuration(delta: number) {
   if (next >= 5 && next <= 180) settings.setDefaultDuration(next)
 }
 
+function adjustSmoke(delta: number) {
+  const next = settings.dailySmokeGoal + delta
+  if (next >= 1 && next <= 50) settings.setDailySmokeGoal(next)
+}
+
 /* ===== 清空历史记录（模态确认，不可恢复） ===== */
 const clearConfirmOpen = ref(false)
 function clearHistory() {
@@ -160,6 +165,19 @@ onUnmounted(() => window.removeEventListener('beforeinstallprompt', onBeforeInst
             <button class="step-btn" type="button" @click="adjustDuration(-5)"><i class="i-ph-minus" /></button>
             <span class="step-num">{{ settings.defaultDuration }}<small>分</small></span>
             <button class="step-btn" type="button" @click="adjustDuration(5)"><i class="i-ph-plus" /></button>
+          </div>
+        </div>
+        <div class="row-divider" />
+        <!-- 每日抽烟目标：行内步进 -->
+        <div class="row">
+          <div class="row-label">
+            <i class="i-ph-cigarette row-icon" style="color: #FF3B30" />
+            <span>每日抽烟目标</span>
+          </div>
+          <div class="stepper">
+            <button class="step-btn" type="button" @click="adjustSmoke(-1)"><i class="i-ph-minus" /></button>
+            <span class="step-num">{{ settings.dailySmokeGoal }}<small>支</small></span>
+            <button class="step-btn" type="button" @click="adjustSmoke(1)"><i class="i-ph-plus" /></button>
           </div>
         </div>
       </div>

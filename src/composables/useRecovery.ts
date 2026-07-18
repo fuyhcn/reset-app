@@ -14,6 +14,7 @@
  */
 import type { ResetEvent } from '@/types/event'
 import { computeSleepDay } from './useSleepStats'
+import { useSettingsStore } from '@/stores/settingsStore'
 
 export interface RecoveryPart {
   key: string
@@ -30,7 +31,6 @@ export interface RecoveryResult {
   windowDays: number
 }
 
-const SMOKE_GOAL = 3
 const EXERCISE_WEEKLY = 150
 const SLEEP_GOAL = 7
 
@@ -41,6 +41,7 @@ function dayStart(ts: number): number {
 }
 
 export function computeRecovery(events: ResetEvent[], windowDays = 7): RecoveryResult {
+  const smokeGoal = useSettingsStore().dailySmokeGoal
   const todayStart = dayStart(Date.now())
   const start = todayStart - (windowDays - 1) * 86400000
   const end = todayStart + 86400000
@@ -60,7 +61,7 @@ export function computeRecovery(events: ResetEvent[], windowDays = 7): RecoveryR
   for (const day of buckets) {
     const cnt = day.filter((e) => e.type === 'smoke' && e.action === 'smoked').length
     if (cnt > 0) smokeDays++
-    const comp = cnt <= SMOKE_GOAL ? 1 : Math.max(0, 1 - (cnt - SMOKE_GOAL) / SMOKE_GOAL)
+    const comp = cnt <= smokeGoal ? 1 : Math.max(0, 1 - (cnt - smokeGoal) / smokeGoal)
     smokeSum += comp
   }
   const smokeRatio = smokeDays === 0 ? 0.5 : smokeSum / windowDays

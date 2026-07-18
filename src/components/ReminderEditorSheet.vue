@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
 import { useReminderStore, type Reminder } from '@/stores/reminderStore'
+import { useToast } from '@/composables/useToast'
 
 const props = defineProps<{
   open: boolean
@@ -11,6 +12,7 @@ const emit = defineEmits<{
 }>()
 
 const store = useReminderStore()
+const toast = useToast()
 
 const title = ref('')
 const body = ref('')
@@ -44,11 +46,20 @@ function close() {
 }
 
 function save() {
-  if (!title.value.trim()) return
+  const t = title.value.trim()
+  const b = body.value.trim()
+  if (!t) {
+    toast.show('请先填写提醒标题')
+    return
+  }
+  if (!b) {
+    toast.show('请先填写提醒内容')
+    return
+  }
   const [h, m] = time.value.split(':').map(Number)
   const data = {
-    title: title.value.trim(),
-    body: body.value.trim(),
+    title: t,
+    body: b,
     hour: h,
     minute: m,
     enabled: enabled.value,

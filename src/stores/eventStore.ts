@@ -6,6 +6,7 @@ import { defineStore } from 'pinia'
 import type { ResetEvent, TimelineDisplay, TimelineGroup, TodaySummary, EventType, EventAction, UrgeCategory } from '@/types/event'
 import { EVENT_COLORS, EVENT_ICONS, URGE_CATEGORIES, urgeCategoryLabel, urgeTriggerLabel } from '@/types/event'
 import { computeSleepDay } from '@/composables/useSleepStats'
+import { useSettingsStore } from '@/stores/settingsStore'
 
 /** 生成唯一 ID */
 function genId(): string {
@@ -84,7 +85,7 @@ function toDisplay(e: ResetEvent): TimelineDisplay {
     urge_failed: '没忍住',
     walk: '走路', run: '跑步', cycle: '骑车',
     strength: '健身', badminton: '羽毛球', swim: '游泳',
-    sleep_start: '记录睡觉', wake_up: '记录起床',
+    sleep_start: '入睡', wake_up: '起床',
     mood_record: '记录心情',
     sexual_normal: '正常', sexual_urge: '冲动控制',
     sexual_failed: '冲动', self_control: '自控',
@@ -190,9 +191,8 @@ function saveEvents(events: ResetEvent[]) {
 }
 
 export const useEventStore = defineStore('events', {
-  state: () => ({
+    state: () => ({
     events: loadEvents() as ResetEvent[],
-    smokeGoal: 3,
     exerciseGoal: 150,
   }),
 
@@ -256,7 +256,7 @@ export const useEventStore = defineStore('events', {
 
       return {
         smokeCount,
-        smokeGoal: this.smokeGoal,
+        smokeGoal: useSettingsStore().dailySmokeGoal,
         exerciseMinutes,
         exerciseGoal: this.exerciseGoal,
         sleepHours,

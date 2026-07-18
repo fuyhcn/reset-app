@@ -1,16 +1,36 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import PageNav from '@/components/PageNav.vue'
 import ReminderEditorSheet from '@/components/ReminderEditorSheet.vue'
 import { useReminderStore, type Reminder } from '@/stores/reminderStore'
 import { useReminderScheduler } from '@/composables/useReminderScheduler'
+import { useToast } from '@/composables/useToast'
 
 const store = useReminderStore()
 const sched = useReminderScheduler()
+const toast = useToast()
 
 const editorOpen = ref(false)
 const editing = ref<Reminder | null>(null)
-const permHint = ref<string | null>(null)
+
+const systemOn = computed({
+  get: () => store.systemNotify,
+  set: async (v: boolean) => {
+    if (v) {
+      const ok = await sched.requestPermission()
+      if (ok) {
+        store.toggleSystem(true)
+        toast.show('系统通知已开启')
+      } else {
+        toast.show('系统通知未获得权限，将使用应用内弹窗提醒')
+        store.toggleSystem(false)
+      }
+    } else {
+      store.toggleSystem(false)
+      toast.show('已关闭系统通知，仍会在应用内弹窗提醒')
+    }
+  },
+})
 
 function openNew() {
   editing.value = null
@@ -24,14 +44,6 @@ function openEdit(r: Reminder) {
 function fmtTime(r: Reminder): string {
   return `${String(r.hour).padStart(2, '0')}:${String(r.minute).padStart(2, '0')}`
 }
-
-async function enableSystem() {
-  const ok = await sched.requestPermission()
-  permHint.value = ok
-    ? '已开启系统通知，后台也能提醒 ✅'
-    : '系统通知不可用（iOS 暂不支持 Web 通知），将使用应用内弹窗提醒'
-  setTimeout(() => (permHint.value = null), 3500)
-}
 </script>
 
 <template>
@@ -43,11 +55,18 @@ async function enableSystem() {
         本地提醒，无需联网。每天到点会弹窗提醒你，可自由添加多个。
       </p>
 
-      <button class="perm" @click="enableSystem">
-        <i class="i-ph-bell" />
-        <span>开启系统通知（可选）</span>
-      </button>
-      <p v-if="permHint" class="perm-hint">{{ permHint }}</p>
+      <div class="perm-row" :class="{ on: systemOn }">
+        <div class="perm-left">
+          <i class="i-ph-bell" />
+          <div>
+            <div class="perm-title">系统通知</div>
+            <div class="perm-sub">{{ systemOn ? '已开启，后台也能提醒' : '关闭时仅应用内弹窗提醒' }}</div>
+          </div>
+        </div>
+        <button class="sw" :class="{ on: systemOn }" @click="systemOn = !systemOn">
+          <i class="dot" />
+        </button>
+      </div>
 
       <div v-if="!store.reminders.length" class="empty">
         <i class="i-ph-bell-ringing empty-icon" />
@@ -104,29 +123,70 @@ async function enableSystem() {
   margin: 4px 2px 16px;
 }
 
-.perm {
+.perm-row {
   display: flex;
   align-items: center;
-  gap: 8px;
+  justify-content: space-between;
+  gap: 12px;
   width: 100%;
-  padding: 13px 16px;
-  border: 0.5px solid var(--sep);
-  border-radius: 14px;
+  padding: 14px 16px;
+  border-radius: 16px;
   background: color-mix(in srgb, var(--orange) 10%, var(--card));
   color: var(--text);
-  font-size: 15px;
-  font-weight: 600;
-  cursor: pointer;
+  margin-bottom: 20px;
 }
-.perm i {
-  font-size: 18px;
+.perm-row.on {
+  background: color-mix(in srgb, var(--green) 10%, var(--card));
+}
+.perm-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.perm-left i {
+  font-size: 22px;
   color: var(--orange);
 }
-.perm-hint {
-  font-size: 12.5px;
+.perm-row.on .perm-left i {
+  color: var(--green);
+}
+.perm-title {
+  font-size: 15px;
+  font-weight: 600;
+}
+.perm-sub {
+  font-size: 12px;
   color: var(--text2);
-  margin: 8px 2px 0;
-  line-height: 1.45;
+  margin-top: 1px;
+}
+
+.sw {
+  width: 47px;
+  height: 28px;
+  border-radius: 16px;
+  border: none;
+  background: rgba(120, 120, 128, 0.32);
+  position: relative;
+  cursor: pointer;
+  transition: background 0.25s var(--spring);
+  flex-shrink: 0;
+}
+.sw.on {
+  background: var(--green);
+}
+.dot {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  transition: transform 0.25s var(--spring);
+}
+.sw.on .dot {
+  transform: translateX(19px);
 }
 
 .empty {
@@ -150,7 +210,7 @@ async function enableSystem() {
 
 .list {
   list-style: none;
-  margin: 0;
+  margin: 20px 0 0;
   padding: 0;
   display: flex;
   flex-direction: column;
@@ -164,11 +224,17 @@ async function enableSystem() {
   padding: 14px 16px;
   border-radius: 16px;
   background: var(--card);
-  border: 0.5px solid var(--sep);
+  border: none;
   cursor: pointer;
 }
 .meta {
   min-width: 0;
+}
+.right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
 }
 .t {
   font-size: 16px;
@@ -185,45 +251,8 @@ async function enableSystem() {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-.right {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-shrink: 0;
-}
-.time {
-  font-size: 15px;
-  font-weight: 700;
-  color: var(--text2);
-  font-variant-numeric: tabular-nums;
-}
-.sw {
-  width: 47px;
-  height: 28px;
-  border-radius: 16px;
   border: none;
-  background: rgba(120, 120, 128, 0.32);
-  position: relative;
-  cursor: pointer;
-  transition: background 0.25s var(--spring);
-}
-.sw.on {
-  background: var(--green);
-}
-.dot {
-  position: absolute;
-  top: 2px;
-  left: 2px;
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  background: #fff;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
-  transition: transform 0.25s var(--spring);
-}
-.sw.on .dot {
-  transform: translateX(19px);
+  background: transparent;
 }
 
 .fab {

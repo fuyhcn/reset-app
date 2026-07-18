@@ -23,6 +23,8 @@ interface SettingsState {
   checkinDates: string[]
   /** 默认运动时长（分钟），用于首页快速记录运动 */
   defaultDuration: number
+  /** 每日抽烟目标（支），用于首页抽烟看板与恢复指数 */
+  dailySmokeGoal: number
   /** 提示词模板（仅一个启用） */
   promptTemplates: PromptTemplate[]
   /** 首页时间线是否锁定：锁定后点击事件卡片不弹窗编辑 */
@@ -62,6 +64,7 @@ function loadSettings(): SettingsState {
           : 'auto',
         checkinDates: Array.isArray(parsed.checkinDates) ? parsed.checkinDates : [],
         defaultDuration: typeof parsed.defaultDuration === 'number' ? parsed.defaultDuration : 30,
+        dailySmokeGoal: typeof parsed.dailySmokeGoal === 'number' ? parsed.dailySmokeGoal : 10,
         promptTemplates: prompts,
         timelineLocked: typeof parsed.timelineLocked === 'boolean' ? parsed.timelineLocked : false,
       }
@@ -69,7 +72,7 @@ function loadSettings(): SettingsState {
   } catch {
     /* 解析失败则回落到默认值 */
   }
-  return { themeMode: 'auto', checkinDates: [], defaultDuration: 30, promptTemplates: defaultPrompts(), timelineLocked: false }
+  return { themeMode: 'auto', checkinDates: [], defaultDuration: 30, dailySmokeGoal: 10, promptTemplates: defaultPrompts(), timelineLocked: false }
 }
 
 /** 本地日期 YYYY-MM-DD（打卡以本地日为准，不补打） */
@@ -139,6 +142,12 @@ export const useSettingsStore = defineStore('settings', {
       this.persist()
     },
 
+    /** 设置每日抽烟目标（支） */
+    setDailySmokeGoal(n: number) {
+      this.dailySmokeGoal = n
+      this.persist()
+    },
+
     /** 切换首页时间线锁定状态 */
     toggleTimelineLock() {
       this.timelineLocked = !this.timelineLocked
@@ -199,6 +208,7 @@ export const useSettingsStore = defineStore('settings', {
           themeMode: this.themeMode,
           checkinDates: this.checkinDates,
           defaultDuration: this.defaultDuration,
+          dailySmokeGoal: this.dailySmokeGoal,
           promptTemplates: this.promptTemplates,
           timelineLocked: this.timelineLocked,
         }),
