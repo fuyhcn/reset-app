@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import AppShell from '@/components/AppShell.vue'
 import BaseToast from '@/components/BaseToast.vue'
@@ -12,6 +12,9 @@ useReminderScheduler().start()
 const router = useRouter()
 const direction = ref<'forward' | 'backward'>('forward')
 
+// 初始为空：首次进入应用 / 刷新页面（此时路由为懒加载，异步组件插入时也不播动画）
+const transitionName = ref('')
+
 // 维护历史栈，用于判断前进 / 后退
 const historyStack = ref<string[]>([router.currentRoute.value.path])
 
@@ -22,22 +25,25 @@ router.beforeEach((to, from, next) => {
     next()
     return
   }
-  const idx = historyStack.value.lastIndexOf(toPath)
-  if (idx !== -1 && idx < historyStack.value.length - 1) {
-    // 回到栈中更早的页面 → 后退
-    direction.value = 'backward'
-    historyStack.value = historyStack.value.slice(0, idx + 1)
+  // 首次导航（进入应用 / 刷新页面）from.name 为 undefined，不播任何划入动画
+  if (from.name) {
+    const idx = historyStack.value.lastIndexOf(toPath)
+    if (idx !== -1 && idx < historyStack.value.length - 1) {
+      // 回到栈中更早的页面 → 后退
+      direction.value = 'backward'
+      historyStack.value = historyStack.value.slice(0, idx + 1)
+    } else {
+      // 新页面或同级跳转 → 前进
+      direction.value = 'forward'
+      historyStack.value.push(toPath)
+    }
+    transitionName.value =
+      direction.value === 'forward' ? 'slide-forward' : 'slide-backward'
   } else {
-    // 新页面或同级跳转 → 前进
-    direction.value = 'forward'
-    historyStack.value.push(toPath)
+    transitionName.value = ''
   }
   next()
 })
-
-const transitionName = computed(() =>
-  direction.value === 'forward' ? 'slide-forward' : 'slide-backward'
-)
 </script>
 
 <template>

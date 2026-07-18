@@ -6,8 +6,8 @@
  * - 以滚动窗口（默认 7 天 = 本周）为口径，综合 4 个维度，权重透明、可解释。
  *
  * 维度与权重：
- *   吸烟克制 30%  — 每日吸烟是否 ≤ 目标(3支)，达标记 1，超标线性递减
- *   运动达标 25%  — 窗口内运动总分钟 / 周目标(150) 折算
+ *   吸烟克制 30%  — 每日吸烟是否 ≤ 目标(每日抽烟目标)，达标记 1，超标线性递减
+ *   运动达标 25%  — 窗口内运动总分钟 / 周目标(默认150分) 折算
  *   睡眠充足 25%  — 有睡眠记录的日子，平均时长 / 目标(7h)
  *   连续自控 20%  — 从今天往前连续未失控的天数 / 窗口天数
  * 某项完全无记录时取中性 0.5，避免空数据拉低指数（更宽容，但不掩盖问题）。
@@ -31,7 +31,6 @@ export interface RecoveryResult {
   windowDays: number
 }
 
-const EXERCISE_WEEKLY = 150
 const SLEEP_GOAL = 7
 
 function dayStart(ts: number): number {
@@ -41,7 +40,9 @@ function dayStart(ts: number): number {
 }
 
 export function computeRecovery(events: ResetEvent[], windowDays = 7): RecoveryResult {
-  const smokeGoal = useSettingsStore().dailySmokeGoal
+  const settings = useSettingsStore()
+  const smokeGoal = settings.dailySmokeGoal
+  const weeklyExerciseGoal = settings.weeklyExerciseGoal
   const todayStart = dayStart(Date.now())
   const start = todayStart - (windowDays - 1) * 86400000
   const end = todayStart + 86400000
@@ -66,11 +67,11 @@ export function computeRecovery(events: ResetEvent[], windowDays = 7): RecoveryR
   }
   const smokeRatio = smokeDays === 0 ? 0.5 : smokeSum / windowDays
 
-  // 2) 运动达标
+  // 2) 运动达标：窗口内运动总分钟 / 周目标（窗口不足 7 天按比例折算）
   const totalMin = win
     .filter((e) => e.type === 'exercise' && e.context?.duration)
     .reduce((s, e) => s + (e.context?.duration || 0), 0)
-  const exerciseTarget = EXERCISE_WEEKLY * (windowDays / 7)
+  const exerciseTarget = weeklyExerciseGoal * (windowDays / 7)
   const exerciseRatio = totalMin === 0 ? 0.5 : Math.min(1, totalMin / exerciseTarget)
 
   // 3) 睡眠充足：按「起床归属日」计算每天睡眠，避免把今早起床和今晚入睡串配
@@ -117,7 +118,7 @@ export function computeRecovery(events: ResetEvent[], windowDays = 7): RecoveryR
       ratio: exerciseRatio,
       weight: 0.25,
       color: '#34C759',
-      detail: totalMin === 0 ? '本周暂无运动记录' : `共 ${totalMin} 分钟`,
+      detail: totalMin === 0 ? '本周暂无运动记录' : `共 ${totalMin} / ${weeklyExerciseGoal} 分钟`,
     },
     {
       key: 'sleep',

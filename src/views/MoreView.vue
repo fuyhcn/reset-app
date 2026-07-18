@@ -83,6 +83,11 @@ function adjustSmoke(delta: number) {
   if (next >= 1 && next <= 50) settings.setDailySmokeGoal(next)
 }
 
+function adjustExercise(delta: number) {
+  const next = settings.weeklyExerciseGoal + delta
+  if (next >= 30 && next <= 600) settings.setWeeklyExerciseGoal(next)
+}
+
 /* ===== 清空历史记录（模态确认，不可恢复） ===== */
 const clearConfirmOpen = ref(false)
 function clearHistory() {
@@ -135,6 +140,35 @@ onUnmounted(() => window.removeEventListener('beforeinstallprompt', onBeforeInst
         </button>
       </div>
 
+      <div class="group-label">目标</div>
+      <div class="card">
+        <!-- 每日抽烟目标：行内步进 -->
+        <div class="row">
+          <div class="row-label">
+            <i class="i-ph-cigarette row-icon" style="color: #FF3B30" />
+            <span>每日抽烟目标</span>
+          </div>
+          <div class="stepper">
+            <button class="step-btn" type="button" @click="adjustSmoke(-1)"><i class="i-ph-minus" /></button>
+            <span class="step-num">{{ settings.dailySmokeGoal }}<small>支</small></span>
+            <button class="step-btn" type="button" @click="adjustSmoke(1)"><i class="i-ph-plus" /></button>
+          </div>
+        </div>
+        <div class="row-divider" />
+        <!-- 每周运动目标：行内步进 -->
+        <div class="row">
+          <div class="row-label">
+            <i class="i-ph-person-simple-run row-icon" style="color: #34C759" />
+            <span>每周运动目标</span>
+          </div>
+          <div class="stepper">
+            <button class="step-btn" type="button" @click="adjustExercise(-10)"><i class="i-ph-minus" /></button>
+            <span class="step-num">{{ settings.weeklyExerciseGoal }}<small>分</small></span>
+            <button class="step-btn" type="button" @click="adjustExercise(10)"><i class="i-ph-plus" /></button>
+          </div>
+        </div>
+      </div>
+
       <div class="group-label">数据与设置</div>
       <div class="card">
         <!-- 外观：行内切换 -->
@@ -159,25 +193,12 @@ onUnmounted(() => window.removeEventListener('beforeinstallprompt', onBeforeInst
         <div class="row">
           <div class="row-label">
             <i class="i-ph-timer row-icon" />
-            <span>默认运动时长</span>
+            <span>默认单次运动时长</span>
           </div>
           <div class="stepper">
             <button class="step-btn" type="button" @click="adjustDuration(-5)"><i class="i-ph-minus" /></button>
             <span class="step-num">{{ settings.defaultDuration }}<small>分</small></span>
             <button class="step-btn" type="button" @click="adjustDuration(5)"><i class="i-ph-plus" /></button>
-          </div>
-        </div>
-        <div class="row-divider" />
-        <!-- 每日抽烟目标：行内步进 -->
-        <div class="row">
-          <div class="row-label">
-            <i class="i-ph-cigarette row-icon" style="color: #FF3B30" />
-            <span>每日抽烟目标</span>
-          </div>
-          <div class="stepper">
-            <button class="step-btn" type="button" @click="adjustSmoke(-1)"><i class="i-ph-minus" /></button>
-            <span class="step-num">{{ settings.dailySmokeGoal }}<small>支</small></span>
-            <button class="step-btn" type="button" @click="adjustSmoke(1)"><i class="i-ph-plus" /></button>
           </div>
         </div>
       </div>
