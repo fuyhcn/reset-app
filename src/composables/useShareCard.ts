@@ -245,142 +245,96 @@ function drawLogo(ctx: CanvasRenderingContext2D, x: number, y: number, p: Palett
   ctx.restore()
 }
 
-// function drawPetal(
-//   ctx: CanvasRenderingContext2D,
-//   baseX: number,
-//   baseY: number,
-//   angle: number,
-//   length: number,
-//   width: number,
-//   lightColor: string,
-//   darkColor: string,
-// ) {
-//   ctx.save()
-//   ctx.translate(baseX, baseY)
-//   ctx.rotate(angle)
-
-//   // 花瓣渐变：顶部亮、底部暗，形成立体绽放感
-//   const grad = ctx.createLinearGradient(0, -length, 0, 0)
-//   grad.addColorStop(0, lightColor)
-//   grad.addColorStop(0.55, lightColor)
-//   grad.addColorStop(1, darkColor)
-
-//   ctx.beginPath()
-//   ctx.moveTo(0, 0)
-//   ctx.bezierCurveTo(-width * 1.2, -length * 0.28, -width * 0.8, -length * 0.85, 0, -length)
-//   ctx.bezierCurveTo(width * 0.8, -length * 0.85, width * 1.2, -length * 0.28, 0, 0)
-//   ctx.closePath()
-
-//   ctx.fillStyle = grad
-//   ctx.fill()
-
-//   // 深色描边，保证朦胧下仍有清晰轮廓
-//   ctx.strokeStyle = darkColor
-//   ctx.lineWidth = 3
-//   ctx.stroke()
-
-//   ctx.restore()
-// }
-
 /**
- * 底部绽放莲花：整张卡片的「最底层」视觉，朦胧柔化、横向充分展开（占宽约 75%）、比例协调。
- * 比例：外层更平更宽，中层最高决定花幅，内层更直立，中心挺拔，形成自然绽放感。
+ * 用图片作为底部莲花背景，并通过「离屏画布缩放 + 顶部蒙版渐变」实现 iOS 兼容的柔光模糊。
+ *
+ * 为什么不直接用 ctx.filter = 'blur()'？
+ * Safari/WebKit（iOS 16+）的 Canvas 2D 完全不支持 ctx.filter，所以会导致莲花在 iPhone 上锐利显示。
+ * 这里先把图片画到一张很小的离屏 canvas，再放大回目标尺寸 bilinear upsampling，等效于高斯模糊，
+ * 再盖一层背景色渐变蒙版，让顶部渐渐融入卡片背景，避免一个生硬的矩形边界。
  */
-// function drawBottomLotus(ctx: CanvasRenderingContext2D, p: Palette) {
-//   const cx = W / 2
-//   const baseY = H + 50 // 从底部稍下方升起，更多花瓣进入可视区域
-//   const blur = p.lotusBlur
-
-//   ctx.save()
-//   // 朦胧感：整朵柔化，但保留轮廓（blur 控制在 6~7px）
-//   ctx.filter = `blur(${blur}px)`
-//   ctx.globalAlpha = 0.82
-
-//   ctx.translate(cx, baseY)
-
-//   // 底部绿色柔光晕，像莲花从暗/亮处绽放
-//   const bottomGlow = ctx.createRadialGradient(0, -120, 30, 0, -60, 460)
-//   bottomGlow.addColorStop(0, p.lotusGlow)
-//   bottomGlow.addColorStop(0.5, p.lotusGlow.replace(/[\d.]+\)$/, '0.05)'))
-//   bottomGlow.addColorStop(1, 'rgba(0,0,0,0)')
-//   ctx.fillStyle = bottomGlow
-//   ctx.fillRect(-540, -540, 1080, 540)
-
-//   // 从后到前绘制，营造绽放层次：外层平展 → 中层 tall → 内层直立 → 中心
-//   // 最外层（最宽最平，铺开横向幅度）
-//   drawPetal(ctx, 0, 0, -1.22, 290, 190, '#0E9A6A', '#064E3B')
-//   drawPetal(ctx, 0, 0, 1.22, 290, 190, '#0E9A6A', '#064E3B')
-//   // 外层侧瓣
-//   drawPetal(ctx, 0, -12, -0.95, 325, 170, '#1AAE78', '#075E43')
-//   drawPetal(ctx, 0, -12, 0.95, 325, 170, '#1AAE78', '#075E43')
-//   // 中层两大瓣（决定整体宽幅与高度）
-//   drawPetal(ctx, 0, -22, -0.65, 400, 195, '#2BBE80', '#0E7A53')
-//   drawPetal(ctx, 0, -22, 0.65, 400, 195, '#2BBE80', '#0E7A53')
-//   // 内层两侧瓣（更直立）
-//   drawPetal(ctx, 0, -30, -0.32, 340, 125, '#4DD598', '#158C5F')
-//   drawPetal(ctx, 0, -30, 0.32, 340, 125, '#4DD598', '#158C5F')
-//   // 中心顶瓣
-//   drawPetal(ctx, 0, -45, 0, 290, 95, '#5DE3A6', '#1FA66F')
-
-//   ctx.restore()
-// }
-// ====== 【请完全替换原 drawBottomLotus 函数】======
-// 假设你的项目是 Vite/React/Vue，public 目录根路径为 '/'
-const LOTUS_IMAGE_PATH = '/bgicon.png' // ✅ 关键：以 '/' 开头，表示 public 根目录
+const LOTUS_IMAGE_PATH = '/bgicon.png'
+// 模糊强度：源图缩放到 12% 再 upsample 回主画布，得到柔和但不丢失轮廓的朦胧感
+const BLUR_DOWN = 0.065
 
 let lotusImage: HTMLImageElement | null = null
+let blurredLotusCache: HTMLCanvasElement | null = null
 
-async function loadLotusImage(): Promise<HTMLImageElement> {
-  if (lotusImage) return lotusImage
-
+function loadLotusImage(): Promise<HTMLImageElement> {
+  if (lotusImage) return Promise.resolve(lotusImage)
   return new Promise((resolve, reject) => {
     const img = new Image()
-    img.crossOrigin = 'anonymous' // 防止跨域（虽然同源通常不需要，但加了更保险）
+    img.crossOrigin = 'anonymous'
     img.onload = () => { lotusImage = img; resolve(img) }
     img.onerror = () => reject(new Error(`Failed to load ${LOTUS_IMAGE_PATH}`))
     img.src = LOTUS_IMAGE_PATH
   })
 }
 
+function buildBlurredLotus(img: HTMLImageElement, targetWidth: number, targetHeight: number): HTMLCanvasElement {
+  if (blurredLotusCache) return blurredLotusCache
+
+  const offW = Math.max(1, Math.floor(targetWidth * BLUR_DOWN))
+  const offH = Math.max(1, Math.floor(targetHeight * BLUR_DOWN))
+
+  // 第一层：小尺寸离屏绘制（缩放产生模糊）
+  const off = document.createElement('canvas')
+  off.width = offW
+  off.height = offH
+  const octx = off.getContext('2d')
+  if (!octx) throw new Error('Cannot get 2D context for offscreen canvas')
+  octx.imageSmoothingEnabled = true
+  octx.imageSmoothingQuality = 'high'
+  octx.drawImage(img, 0, 0, offW, offH)
+
+  // 第二层：放大回目标尺寸，上采样 ≈ 柔光模糊
+  const out = document.createElement('canvas')
+  out.width = Math.floor(targetWidth)
+  out.height = Math.floor(targetHeight)
+  const octx2 = out.getContext('2d')
+  if (!octx2) throw new Error('Cannot get 2D context for blurred canvas')
+  octx2.imageSmoothingEnabled = true
+  octx2.imageSmoothingQuality = 'high'
+  octx2.drawImage(off, 0, 0, out.width, out.height)
+
+  blurredLotusCache = out
+  return out
+}
+
 async function drawBottomLotus(ctx: CanvasRenderingContext2D, p: Palette) {
   const img = await loadLotusImage()
-
-  // 计算尺寸：占宽 75%，保持比例
   const targetWidth = W * 0.95
-  const scale = targetWidth / img.width
-  const targetHeight = img.height * scale
-
-  // 底部居中对齐（稍上提 50px，避免被裁剪）
-  const drawX = W / 2 - targetWidth / 2
+  const targetHeight = targetWidth * (img.height / img.width)
+  const drawX = (W - targetWidth) / 2
   const drawY = H - targetHeight + 50
 
+  // 背景莲花层：使用品牌图片，经过离屏模糊处理（iOS 兼容）
+  const blurred = buildBlurredLotus(img, targetWidth, targetHeight)
+
   ctx.save()
+  ctx.globalAlpha = 0.78
+  ctx.drawImage(blurred, drawX, drawY, targetWidth, targetHeight)
+  ctx.restore()
 
-  // 模糊 + 透明度
-  ctx.filter = `blur(45px)`
-  ctx.globalAlpha = 0.82
+  // 蒙版层：把莲花顶部渐渐融入卡片背景，避免一个生硬的矩形边界
+  const maskTop = Math.max(0, drawY - 80)
+  const mask = ctx.createLinearGradient(0, maskTop, 0, H)
+  mask.addColorStop(0, hexToRgba(p.bg, 1))
+  mask.addColorStop(0.15, hexToRgba(p.bg, 0.6))
+  mask.addColorStop(0.45, hexToRgba(p.bg, 0.12))
+  mask.addColorStop(1, 'rgba(0,0,0,0)')
+  ctx.fillStyle = mask
+  ctx.fillRect(0, maskTop, W, H - maskTop)
 
-  // 深色模式增强可见性
-  if (p.isDark) {
-    ctx.globalCompositeOperation = 'screen'
-  }
-
-  // 绘制 SVG 图片
-  ctx.drawImage(img, drawX, drawY, targetWidth, targetHeight)
-
-  // 底部光晕（增强氛围）
+  // 底部绿色柔光晕，增强品牌氛围
   const glow = ctx.createRadialGradient(
-    W / 2, H, 30,
-    W / 2, H - targetHeight * 0.6, targetWidth * 0.6
+    W / 2, H, 20,
+    W / 2, H - targetHeight * 0.5, targetWidth * 0.65
   )
   glow.addColorStop(0, p.lotusGlow)
   glow.addColorStop(1, 'rgba(0,0,0,0)')
-  ctx.globalCompositeOperation = 'overlay'
-  ctx.globalAlpha = 0.4
   ctx.fillStyle = glow
-  ctx.fillRect(drawX, drawY, targetWidth, targetHeight)
-
-  ctx.restore()
+  ctx.fillRect(0, 0, W, H)
 }
 function drawLevelBadge(
   ctx: CanvasRenderingContext2D,

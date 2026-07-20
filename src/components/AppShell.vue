@@ -14,6 +14,7 @@
   max-width: 430px;
   margin: 0 auto;
   position: relative;
-  overflow-x: hidden;
+  /* clip 裁掉路由切换时的横向溢出，但不建立滚动容器，保证子页面 sticky 顶栏正常固定 */
+  overflow-x: clip;
 }
 </style>

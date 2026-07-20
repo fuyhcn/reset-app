@@ -112,7 +112,9 @@ body {
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  overflow-x: hidden;
+  /* clip 仅裁掉横向溢出（含路由切换时的横向位移），但不会变成滚动容器，
+     从而让子页面的 position: sticky 顶栏能正常相对视口固定（hidden 会破坏 sticky） */
+  overflow-x: clip;
   transition: background 0.3s ease, color 0.3s ease;
 }
 
