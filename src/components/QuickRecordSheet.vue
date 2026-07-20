@@ -57,14 +57,7 @@ function pickCat(c: UrgeCategory) {
   urgeCat.value = urgeCat.value === c ? null : c
 }
 
-/** 某运动的近期平均时长（文档 2.8：默认根据历史，无记录则用设置里的默认时长） */
-function avgDuration(key: EventAction): number {
-  const list = store.events.filter((e) => e.type === 'exercise' && e.action === key && e.context?.duration)
-  if (!list.length) return settings.defaultDuration
-  const sum = list.reduce((s, e) => s + (e.context?.duration || 0), 0)
-  return Math.round(sum / list.length)
-}
-
+/** 快速记录运动时长：直接用设置里的「默认单次运动时长」，不做历史平均（要改请在「更多」里设置） */
 function recordSmoked() {
   const ev = store.recordSmoke()
   toast.show('已记录 · 抽了一根', { undoAction: () => store.removeEvent(ev.id) })
@@ -78,7 +71,7 @@ function recordUrge(resist: boolean) {
 }
 
 function recordSport(key: EventAction, label: string) {
-  const dur = avgDuration(key)
+  const dur = settings.defaultDuration
   const ev = store.recordExercise(key, dur)
   toast.show(`已记录 · ${label} ${dur}分钟`, { undoAction: () => store.removeEvent(ev.id) })
   close()
