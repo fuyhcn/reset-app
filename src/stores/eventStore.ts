@@ -46,30 +46,47 @@ function getDateLabel(ts: number): string {
   return `${d.getMonth() + 1}月${d.getDate()}日`
 }
 
-/** 计算自控天数（连续未失控的天数，含今天） */
-function calcControlDays(events: ResetEvent[]): number {
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-  let streak = 0
-  for (let i = 0; i < 365; i++) {
-    const dayStart = new Date(today)
-    dayStart.setDate(dayStart.getDate() - i)
-    const dayEnd = new Date(dayStart)
-    dayEnd.setDate(dayEnd.getDate() + 1)
-    const dayEvents = events.filter(
-      e => e.timestamp >= dayStart.getTime() && e.timestamp < dayEnd.getTime()
-    )
-    const hasFailed = dayEvents.some(e => e.action === 'urge_failed' || e.action === 'smoked')
-    if (i === 0) {
-      if (hasFailed) return 0
-      streak++
-      continue
-    }
-    if (hasFailed) return streak
-    if (dayEvents.length === 0) return streak
-    streak++
+/** 掌控力：哪些动作算「忍住冲动 / 自控成功」 */
+export const RESISTED_ACTIONS: EventAction[] = ['urge_resisted', 'sexual_urge', 'self_control']
+/** 失控：哪些动作算「没忍住 / 破戒」 */
+export const FAILED_ACTIONS: EventAction[] = ['urge_failed', 'smoked', 'sexual_failed']
+
+const SLEEP_GOAL_MS = 7 * 3600000
+
+function dayStartTs(ts: number): number {
+  const d = new Date(ts)
+  d.setHours(0, 0, 0, 0)
+  return d.getTime()
+}
+
+/**
+ * 掌控力（累积总分，只增不减）：
+ *   - 忍住冲动（RESISTED_ACTIONS：urge_resisted / sexual_urge / self_control）：每事件 +1
+ *   - 运动：时长 ≥30 分钟 +2，不足 30 分钟 +1（每个运动事件）
+ *   - 睡眠达标（当天时长 ≥ 7h）：每天 +1（按天去重，避免入睡/起床两条事件重复计）
+ *   - 心情记录（当天任意 mood_record）：每天 +1（按天去重）
+ * 不扣分（减分措施暂不做）。核心：每一次正向选择都是「恢复进度」。
+ */
+export function controlPowerPoints(events: ResetEvent[]): number {
+  const byDay = new Map<number, ResetEvent[]>()
+  for (const e of events) {
+    const d = dayStartTs(e.timestamp)
+    if (!byDay.has(d)) byDay.set(d, [])
+    byDay.get(d)!.push(e)
   }
-  return streak
+  let total = 0
+  for (const [d, dayEvents] of byDay) {
+    for (const e of dayEvents) {
+      if (RESISTED_ACTIONS.includes(e.action)) total += 1
+      if (e.type === 'exercise' && e.context?.duration) {
+        total += e.context.duration >= 30 ? 2 : 1
+      }
+    }
+    const sleep = computeSleepDay(events, d)
+    if (sleep.has && sleep.durationMs >= SLEEP_GOAL_MS) total += 1
+    if (dayEvents.some((e) => e.type === 'mood' && e.action === 'mood_record')) total += 1
+  }
+  return total
 }
 
 /** 将事件转为时间线显示信息 */
@@ -264,7 +281,7 @@ export const useEventStore = defineStore('events', {
         sleepHas,
         sleepTime: sleepStat.sleepStart ? fmtTime(sleepStat.sleepStart) : undefined,
         wakeTime: sleepStat.wakeUp ? fmtTime(sleepStat.wakeUp) : undefined,
-        controlDays: calcControlDays(this.events),
+        controlPower: controlPowerPoints(this.events),
       }
     },
 

@@ -11,7 +11,7 @@ interface Summary {
   sleepHours: number
   sleepMinutes: number
   sleepHas: boolean
-  controlDays: number
+  controlPower: number
 }
 
 const props = defineProps<{
@@ -86,8 +86,8 @@ function sleepText() {
       <div class="metric">
         <div class="icon heart"><i class="i-ph-heart" /></div>
         <div>
-          <label>掌控</label>
-          <p>{{ summary.controlDays }}<span>天</span></p>
+          <label>掌控力</label>
+          <p>{{ summary.controlPower }}<span>分</span></p>
         </div>
       </div>
     </div>

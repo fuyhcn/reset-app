@@ -8,6 +8,7 @@ import { useEventStore } from '@/stores/eventStore'
 import { useTheme } from '@/composables/useTheme'
 import PageNav from '@/components/PageNav.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
+import QuickRecordSheet from '@/components/QuickRecordSheet.vue'
 
 const router = useRouter()
 const toast = useToast()
@@ -30,12 +31,16 @@ interface MenuItem {
 /* 快捷操作：详细记录入口（摊平，不再三级跳转） */
 const quickActions: MenuItem[] = [
   { key: 'smoke', icon: 'i-ph-cigarette', label: '抽烟 · 详细', sub: '诱因 / 备注', tint: '#FF3B30', bg: 'rgba(255,59,48,0.12)', to: ROUTES.SMOKE },
+  { key: 'urge', icon: 'i-ph-fire', label: '冲动 · 酒色财气', sub: '克制 / 没忍住', tint: '#FF9500', bg: 'rgba(255,149,0,0.12)' },
   { key: 'exercise', icon: 'i-ph-person-simple-run', label: '运动 · 详细', sub: '时长 / 感受', tint: '#34C759', bg: 'rgba(52,199,89,0.12)', to: ROUTES.EXERCISE },
   { key: 'mood', icon: 'i-ph-smiley', label: '心情 · 详细', sub: '此刻 / 场景', tint: '#007AFF', bg: 'rgba(0,122,255,0.12)', to: ROUTES.MOOD },
   { key: 'sexual', icon: 'i-ph-heart', label: '性 · 详细', sub: '正常 / 冲动', tint: '#FF2D55', bg: 'rgba(255,45,85,0.12)', to: ROUTES.SEXUAL },
   { key: 'sleep', icon: 'i-ph-moon', label: '睡眠 · 详细', sub: '入睡 / 起床', tint: '#5856D6', bg: 'rgba(88,86,214,0.12)', to: ROUTES.SLEEP },
   { key: 'weight', icon: 'i-ph-scales', label: '体重 · 详细', sub: 'kg / 斤', tint: '#8E8E93', bg: 'rgba(142,142,147,0.12)', to: ROUTES.WEIGHT },
 ]
+
+/* 冲动记录底部 Sheet（从「更多」打开，复用首页快速记录） */
+const urgeOpen = ref(false)
 
 const dataItems: MenuItem[] = [
   { key: 'reminder', icon: 'i-ph-bell', label: '提醒', sub: '本地定时', tint: '#FF9500', bg: 'rgba(255,149,0,0.12)', to: ROUTES.REMINDERS },
@@ -63,6 +68,10 @@ function open(item: MenuItem) {
   if (item.disabled) return
   if (item.key === 'clear') {
     clearConfirmOpen.value = true
+    return
+  }
+  if (item.key === 'urge') {
+    urgeOpen.value = true
     return
   }
   if (!item.to) return
@@ -282,6 +291,9 @@ onUnmounted(() => window.removeEventListener('beforeinstallprompt', onBeforeInst
       danger
       @confirm="clearHistory"
     />
+
+    <!-- 冲动记录（底部 Sheet，从「更多」打开） -->
+    <QuickRecordSheet v-model="urgeOpen" mode="urge" />
   </div>
 </template>
 

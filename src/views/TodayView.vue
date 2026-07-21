@@ -61,7 +61,7 @@ function openQuick(type: string) {
     return
   }
   const map: Record<string, 'smoke' | 'urge' | 'sport' | 'mood'> = {
-    smoke: 'smoke', urge: 'urge', sport: 'sport', mood: 'mood',
+    smoke: 'smoke', sport: 'sport', mood: 'mood',
   }
   sheetMode.value = map[type] ?? 'smoke'
   quickOpen.value = true

@@ -155,7 +155,8 @@ export interface TodaySummary {
   sleepHas: boolean
   sleepTime?: string
   wakeTime?: string
-  controlDays: number
+  /** 掌控力：累积总分（只增不减），见 eventStore.controlPowerPoints */
+  controlPower: number
 }
 
 /** 事件颜色映射 */

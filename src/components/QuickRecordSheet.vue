@@ -28,6 +28,7 @@ watch(() => props.modelValue, (v) => {
   if (v) {
     showUrgeSub.value = false
     urgeCat.value = null
+    moodNote.value = ''
   }
 })
 
@@ -47,6 +48,9 @@ const moods = [
   { level: 2, emoji: '🙁', label: '不太好' },
   { level: 1, emoji: '😣', label: '很差' },
 ]
+
+/* 心情：可选备注（内容可填可不填） */
+const moodNote = ref('')
 
 const titleMap = { smoke: '抽烟', urge: '冲动', sport: '运动', mood: '心情' }
 const sheetTitle = computed(() => titleMap[props.mode])
@@ -78,8 +82,10 @@ function recordSport(key: EventAction, label: string) {
 }
 
 function recordMood(level: number, label: string) {
-  const ev = store.recordMood(level)
+  const note = moodNote.value.trim() || undefined
+  const ev = store.recordMood(level, note)
   toast.show(`已记录 · 心情${label}`, { undoAction: () => store.removeEvent(ev.id) })
+  moodNote.value = ''
   close()
 }
 
@@ -174,7 +180,7 @@ function recordTempt(cat: UrgeCategory, key: string, label: string, resisted: bo
           <div class="tip">点击即记录，时长取近期平均；想精确设置点「更多 → 运动」</div>
         </template>
 
-        <!-- 心情：点表情即记录 -->
+        <!-- 心情：点表情即记录（备注可填可不填） -->
         <template v-else-if="mode === 'mood'">
           <div class="mood-row">
             <button
@@ -188,6 +194,12 @@ function recordTempt(cat: UrgeCategory, key: string, label: string, resisted: bo
               <span class="ml">{{ m.label }}</span>
             </button>
           </div>
+          <textarea
+            v-model="moodNote"
+            class="mood-note"
+            rows="2"
+            placeholder="一句话记录此刻（可选）"
+          />
         </template>
 
         <button class="cancel" type="button" @click="close">取消</button>
@@ -302,6 +314,16 @@ function recordTempt(cat: UrgeCategory, key: string, label: string, resisted: bo
 .mood-btn:active { transform: scale(0.94); }
 .me { font-size: 28px; line-height: 1; }
 .ml { font-size: 12px; color: var(--text2); }
+
+.mood-note {
+  width: 100%; margin-top: 14px; padding: 14px 16px; border-radius: 16px;
+  border: 1.5px solid var(--sep); background: var(--card);
+  font-size: 15px; font-family: inherit; color: var(--text);
+  resize: none; outline: none; line-height: 1.5;
+  transition: border-color 0.25s var(--spring), box-shadow 0.25s var(--spring);
+}
+.mood-note:focus { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.12); }
+.mood-note::placeholder { color: var(--text3); }
 
 .cancel {
   margin-top: 4px; width: 100%; height: 50px; border-radius: 16px; border: none;

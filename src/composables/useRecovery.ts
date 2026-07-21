@@ -9,12 +9,13 @@
  *   吸烟克制 30%  — 每日吸烟是否 ≤ 目标(每日抽烟目标)，达标记 1，超标线性递减
  *   运动达标 25%  — 窗口内运动总分钟 / 周目标(默认150分) 折算
  *   睡眠充足 25%  — 有睡眠记录的日子，平均时长 / 目标(7h)
- *   连续自控 20%  — 从今天往前连续未失控的天数 / 窗口天数
+ *   掌控力 20%    — 窗口内「掌控力积分」/ 周目标(14 分 ≈ 每天 2 分)
  * 某项完全无记录时取 0，避免「无数据却显示 50%」带来的误解。
  */
 import type { ResetEvent } from '@/types/event'
 import { computeSleepDay } from './useSleepStats'
 import { useSettingsStore } from '@/stores/settingsStore'
+import { controlPowerPoints } from '@/stores/eventStore'
 
 export interface RecoveryPart {
   key: string
@@ -91,17 +92,10 @@ export function computeRecovery(events: ResetEvent[], windowDays = 7): RecoveryR
   }
   const sleepRatio = sleepDays === 0 ? 0 : sleepSum / sleepDays
 
-  // 4) 连续自控（从今天往前，断签即止）
-  let control = 0
-  for (let i = 0; i < windowDays; i++) {
-    const ds = start + (windowDays - 1 - i) * 86400000
-    const day = win.filter((e) => e.timestamp >= ds && e.timestamp < ds + 86400000)
-    const failed = day.some((e) => e.action === 'urge_failed' || e.action === 'smoked')
-    if (failed) break
-    if (day.length === 0 && i > 0) break // 仅今天可空，不视为断签
-    control++
-  }
-  const controlRatio = control / windowDays
+  // 4) 掌控力：窗口内累积掌控力积分 / 周目标（14 分 ≈ 每天 2 分），只增不减、不扣分
+  const weeklyControlPoints = controlPowerPoints(win)
+  const WEEKLY_CONTROL_GOAL = 14
+  const controlRatio = Math.min(1, weeklyControlPoints / WEEKLY_CONTROL_GOAL)
 
   const parts: RecoveryPart[] = [
     {
@@ -130,11 +124,11 @@ export function computeRecovery(events: ResetEvent[], windowDays = 7): RecoveryR
     },
     {
       key: 'control',
-      label: '连续自控',
+      label: '掌控力',
       ratio: controlRatio,
       weight: 0.2,
       color: '#FF2D55',
-      detail: `连续 ${control} 天`,
+      detail: `本周 +${weeklyControlPoints} 分`,
     },
   ]
 

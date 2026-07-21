@@ -5,7 +5,7 @@ const emit = defineEmits<{
 
 const actions = [
   { type: 'smoke', icon: 'i-ph-cigarette', label: '抽烟', tint: '#8E8E93' },
-  { type: 'urge', icon: 'i-ph-fire', label: '冲动', tint: '#FF9500' },
+  { type: 'mood', icon: 'i-ph-smiley', label: '心情', tint: '#007AFF' },
   { type: 'sport', icon: 'i-ph-person-simple-run', label: '运动', tint: '#34C759' },
   { type: 'weight', icon: 'i-ph-scales', label: '体重', tint: '#FF2D55' },
   { type: 'more', icon: 'i-ph-dots-three', label: '更多', tint: '#5E5E61' },
